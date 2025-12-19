@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>26년 3월, 5월 SAT 대비반 공지 이동중...</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8DDW7EXZJL"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-8DDW7EXZJL');
+    </script>
+  </head>
+  <body>
+    <div style="text-align: center; margin-top: 100px; font-family: sans-serif;">
+        <h2>'26년 3월, 5월 SAT시험 대비반'</h2>
+        <p>상세 공지 페이지로 이동 중입니다...</p>
+        <p style="color: gray; font-size: 0.8em;">잠시만 기다려주세요.</p>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const src = params.get('src') || 'unknown';
+
+      // 2. 구글 앱스 스크립트 주소 (보내주신 최신 버전)
+      const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQmp5m2g9Fb1a9Tqy4ePEiyi7nu_Xfgw0wb3KJsnUz3gSb1hkuvFDGFKHekE2D8xAnJg/exec";
+
+      // 3. [적용 완료] 이동할 블로그 공지 주소
+      const NOTICE_URL = "https://blog.naver.com/superfastsat/224098138489"; 
+
+      // 4. 봇/크롤러 감지 필터 (슬랙 중복 알림 차단)
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isBot = /bot|crawler|spider|crawling|facebook|kakaotalk|twitter|slack|whatsapp|telegram|naver/.test(userAgent);
+
+      // 5. GA 이벤트 전송
+      gtag('event', 'notice_click', {
+        event_category: 'Redirect',
+        event_label: src  
+      });
+
+      // 6. 슬랙 전송 (사람일 때만 실행)
+      if (!isBot) {
+          fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                src: src, 
+                type: 'class_notice' 
+            }),
+          }).catch(err => console.log("Slack Alert Error:", err));
+      } else {
+          console.log("Bot detected. Slack alert skipped.");
+      }
+
+      // 7. 3초 후 블로그로 이동
+      setTimeout(() => {
+        window.location.href = NOTICE_URL;
+      }, 3000);
+    </script>
+  </body>
+</html>
