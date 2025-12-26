@@ -24,38 +24,63 @@
       const params = new URLSearchParams(window.location.search);
       const src = params.get('src') || 'unknown';
 
-      // 2. 구글 앱스 스크립트 주소 (보내주신 최신 버전)
+      // 2. 구글 앱스 스크립트 주소 (유지)
       const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQmp5m2g9Fb1a9Tqy4ePEiyi7nu_Xfgw0wb3KJsnUz3gSb1hkuvFDGFKHekE2D8xAnJg/exec";
 
-      // 3. [적용 완료] 이동할 블로그 공지 주소
+      // 3. 이동할 블로그 공지 주소 (유지)
       const NOTICE_URL = "https://blog.naver.com/superfastsat/224098138489"; 
 
-      // 4. 봇/크롤러 감지 필터 (슬랙 중복 알림 차단)
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isBot = /bot|crawler|spider|crawling|facebook|kakaotalk|twitter|slack|whatsapp|telegram|naver/.test(userAgent);
+      // -----------------------------------------------------------
+      // [업그레이드된 봇/크롤러 감지 필터]
+      // -----------------------------------------------------------
+      function checkIsBot() {
+        const ua = navigator.userAgent.toLowerCase();
+        
+        // 1. 봇 키워드 + headless(화면없는 브라우저) 감지
+        if (/bot|crawler|spider|crawling|facebook|kakaotalk|twitter|slack|whatsapp|telegram|naver|headless|lighthouse|google-inspectiontool/.test(ua)) {
+            return true;
+        }
 
-      // 5. GA 이벤트 전송
+        // 2. [강력 차단] 자동화 도구(Selenium, Puppeteer) 감지
+        if (navigator.webdriver) {
+            return true;
+        }
+
+        // 3. 화면 크기가 0이거나 감지되지 않는 유령 브라우저 차단
+        if (!window.screen || window.screen.width === 0 || window.screen.height === 0) {
+            return true;
+        }
+
+        return false;
+      }
+
+      const isBot = checkIsBot();
+
+      // 4. GA 이벤트 전송
       gtag('event', 'notice_click', {
         event_category: 'Redirect',
         event_label: src  
       });
 
-      // 6. 슬랙 전송 (사람일 때만 실행)
+      // 5. 슬랙 전송 (봇이 아닐 때만 실행)
       if (!isBot) {
-          fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                src: src, 
-                type: 'class_notice' 
-            }),
-          }).catch(err => console.log("Slack Alert Error:", err));
+          // 0.5초 딜레이를 주어 순간 스캔 봇 회피
+          setTimeout(() => {
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    src: src, 
+                    type: 'class_notice' 
+                }),
+            }).catch(err => console.log("Slack Alert Error:", err));
+          }, 500);
       } else {
-          console.log("Bot detected. Slack alert skipped.");
+          console.log("🚫 Bot detected. Slack alert skipped.");
       }
 
-      // 7. 3초 후 블로그로 이동
+      // 6. 3초 후 블로그로 이동
       setTimeout(() => {
         window.location.href = NOTICE_URL;
       }, 3000);
