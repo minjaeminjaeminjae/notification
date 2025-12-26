@@ -31,30 +31,47 @@
       const NOTICE_URL = "https://blog.naver.com/superfastsat/224098138489"; 
 
       // -----------------------------------------------------------
-      // [업그레이드된 봇/크롤러 감지 필터]
+      // [최종 병기] 봇/중복 차단 필터 적용
       // -----------------------------------------------------------
-      function checkIsBot() {
+      function shouldSendAlert(src) {
         const ua = navigator.userAgent.toLowerCase();
         
-        // 1. 봇 키워드 + headless(화면없는 브라우저) 감지
+        // 1. [기본 차단] 봇 키워드 + Headless 감지
         if (/bot|crawler|spider|crawling|facebook|kakaotalk|twitter|slack|whatsapp|telegram|naver|headless|lighthouse|google-inspectiontool/.test(ua)) {
-            return true;
+            console.log("🚫 Bot User-Agent detected.");
+            return false;
         }
 
-        // 2. [강력 차단] 자동화 도구(Selenium, Puppeteer) 감지
+        // 2. [강력 차단] WebDriver(자동화 도구) 감지
         if (navigator.webdriver) {
-            return true;
+            console.log("🚫 WebDriver detected.");
+            return false;
         }
 
-        // 3. 화면 크기가 0이거나 감지되지 않는 유령 브라우저 차단
-        if (!window.screen || window.screen.width === 0 || window.screen.height === 0) {
-            return true;
+        // 3. [유령 브라우저 차단] 화면이 없거나 숨겨진 상태(미리보기 봇) 차단
+        if (!window.screen || window.screen.width === 0 || window.screen.height === 0 || document.visibilityState === 'hidden') {
+            console.log("🚫 Hidden/Ghost browser detected.");
+            return false;
         }
 
-        return false;
+        // 4. [중복 방지] 기억력(LocalStorage) 체크 (10분 쿨타임)
+        // 공지 프로젝트용 전용 키(storageKey) 사용
+        const storageKey = 'slack_alert_notice_' + src; 
+        const lastSent = localStorage.getItem(storageKey);
+        const now = new Date().getTime();
+
+        if (lastSent && (now - lastSent < 600000)) { // 10분 이내 재전송 방지
+            console.log("🚫 Duplicate blocked (Sent within 10 mins).");
+            return false;
+        }
+
+        // 통과 시 현재 시간 기록
+        localStorage.setItem(storageKey, now);
+        return true;
       }
 
-      const isBot = checkIsBot();
+      // 검사 실행
+      const isRealUser = shouldSendAlert(src);
 
       // 4. GA 이벤트 전송
       gtag('event', 'notice_click', {
@@ -62,8 +79,8 @@
         event_label: src  
       });
 
-      // 5. 슬랙 전송 (봇이 아닐 때만 실행)
-      if (!isBot) {
+      // 5. 슬랙 전송 (진짜 사람일 때만)
+      if (isRealUser) {
           // 0.5초 딜레이를 주어 순간 스캔 봇 회피
           setTimeout(() => {
             fetch(GOOGLE_SCRIPT_URL, {
@@ -77,7 +94,7 @@
             }).catch(err => console.log("Slack Alert Error:", err));
           }, 500);
       } else {
-          console.log("🚫 Bot detected. Slack alert skipped.");
+          console.log("Slack alert skipped by filter.");
       }
 
       // 6. 3초 후 블로그로 이동
